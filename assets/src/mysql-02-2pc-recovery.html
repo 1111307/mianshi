@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="zh-CN"><head><meta charset="utf-8"><meta name="win" content="1000x640"><link rel="stylesheet" href="diagram.css">
+<style>.canvas{height:640px;padding:24px 28px;}</style></head>
+<body><div class="canvas">
+
+  <h1><span class="n">2</span>崩溃恢复怎么判定：两句话的规则</h1>
+  <p class="sub">redo 里的状态决定要不要看 binlog；binlog 的完整性是最终判据</p>
+
+  <div class="col center" style="margin-top:14px;">
+    <div class="node q">redo log 里这个事务是什么状态？</div>
+
+    <div class="row g40" style="margin-top:12px;align-items:flex-start;">
+
+      <div class="col center g8">
+        <span class="branch">【commit】标记</span>
+        <span class="ar down">↓</span>
+        <div class="node ck">直接提交</div>
+        <span class="small muted" style="margin-top:2px;">不看 binlog</span>
+      </div>
+
+      <div class="col center g8">
+        <span class="branch">【prepare】标记</span>
+        <span class="ar down">↓</span>
+        <div class="node q">binlog 里有对应的 XID event 吗？</div>
+        <div class="row g40" style="margin-top:12px;align-items:flex-start;">
+          <div class="col center g8">
+            <span class="branch">有（完整）</span>
+            <span class="ar down">↓</span>
+            <div class="node ck">提交</div>
+          </div>
+          <div class="col center g8">
+            <span class="branch">没有（不完整）</span>
+            <span class="ar down">↓</span>
+            <div class="node rb">回滚</div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <div class="row g16" style="margin-top:22px;align-items:stretch;">
+
+    <div class="card" style="flex:1;border-color:var(--rose);">
+      <div class="t">反例：如果反过来先写 binlog</div>
+      <div class="d">
+        崩在两者之间 → binlog 有这个事务，redo 没有。<br>
+        从库重放它，主库却什么都没发生 → <b class="hl">主从不一致</b>。<br>
+        而且救不回来：binlog 是<b class="hl">逻辑日志</b>，InnoDB 的崩溃恢复需要页级物理修改，
+        拿 binlog 无法重放。
+      </div>
+    </div>
+
+    <div class="card" style="flex:1;border-color:var(--indigo);">
+      <div class="t">为什么必须有 prepare 这个中间态</div>
+      <div class="d">
+        只写一个日志都不行：<br>
+        · 只有 redo → 从库和备份链断了（没有变更流）<br>
+        · 只有 binlog → 主库数据丢（binlog 不能用于 InnoDB 恢复）<br>
+        两份都要写 ⟹ 必然需要"<b class="hl">一个悬而未决的中间态 + 一个判据</b>"。
+        prepare 是前者，binlog 完整性是后者。
+      </div>
+    </div>
+
+  </div>
+
+</div></body></html>

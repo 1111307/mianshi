@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="zh-CN"><head><meta charset="utf-8"><meta name="win" content="1000x600"><link rel="stylesheet" href="diagram.css">
+<style>.canvas{height:600px;padding:24px 28px;}</style></head>
+<body><div class="canvas">
+
+  <h1><span class="n">1</span>MySQL 两阶段提交：写入时序与崩溃点</h1>
+  <p class="sub">顺序不能换：<b>redo prepare → binlog → redo commit</b>。判据是 binlog 是否完整</p>
+
+  <div style="margin-top:16px;">
+
+    <div class="phase p1">
+      <div class="ph">① Prepare 阶段 —— 先把物理修改钉住</div>
+      <div class="flow">
+        <span class="box">redo log buffer</span>
+        <span class="ar">──►</span>
+        <span class="box file">redo 文件</span>
+        <span class="ar">──►</span>
+        <span class="box fsync">fsync 落盘</span>
+        <span class="ar">──►</span>
+        <span class="box k1">打上 prepare 标记</span>
+      </div>
+    </div>
+
+    <div class="crash">✂ <b>崩溃点 A</b>：redo 说"我在准备"，binlog 里什么都没有 → <b>回滚</b></div>
+
+    <div class="phase p2">
+      <div class="ph">② Commit 阶段 a —— 再写逻辑日志，这是最终判据</div>
+      <div class="flow">
+        <span class="box">binlog cache</span>
+        <span class="ar">──►</span>
+        <span class="box file">binlog 文件</span>
+        <span class="ar">──►</span>
+        <span class="box fsync">fsync 落盘</span>
+        <span class="ar">──►</span>
+        <span class="box k2">末尾带 XID event</span>
+      </div>
+    </div>
+
+    <div class="crash">✂ <b>崩溃点 B</b>：binlog 已经完整了 → 恢复时判 <b>提交</b></div>
+
+    <div class="phase p3">
+      <div class="ph">③ Commit 阶段 b —— 补上"定论"的标记</div>
+      <div class="flow">
+        <span class="box">redo 文件</span>
+        <span class="ar">──►</span>
+        <span class="box k1">写入 commit 标记</span>
+        <span class="box" style="border-color:var(--rose);color:var(--rose);background:var(--rose-bg);">★ 不必立刻 fsync</span>
+      </div>
+    </div>
+
+    <div class="crash">✂ <b>崩溃点 C</b>：redo 已有 commit 标记 → 直接提交（连 binlog 都不用看）</div>
+
+  </div>
+
+  <div class="card hi" style="margin-top:16px;">
+    <div class="t">为什么第 ③ 步可以不 fsync</div>
+    <div class="d">
+      因为 prepare 已经落盘、binlog 也已经完整落盘。万一崩在这，恢复时看到"<b class="hl">prepare + binlog 完整</b>"
+      照样判提交。<b class="hl">用 binlog 的完整性，替代了对 commit 标记落盘的依赖</b> —— 这就是这套设计的精髓，也是它省下一次 fsync 的地方。
+    </div>
+  </div>
+
+</div></body></html>
