@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="zh-CN"><head><meta charset="utf-8"><meta name="win" content="1000x510"><link rel="stylesheet" href="diagram.css">
+<style>.canvas{height:510px;}</style></head>
+<body><div class="canvas">
+
+  <h1><span class="n">2</span>仓库满了：sender 挂起，receiver 到场后三步联动</h1>
+  <p class="sub">G9 执行 <code>ch &lt;- 60</code> 时仓库已满，于是揣着 60 挂进 sendq 睡觉 —— 值不在 channel 里，在它自己栈上</p>
+
+  <div class="row g16 center" style="margin-top:20px;align-items:stretch;">
+
+    <div class="state" style="flex:1;">
+      <div class="sh">① 之前：仓库满，发送者在排队</div>
+      <div class="row center g6">
+        <div class="cell on">20</div><div class="cell on">30</div><div class="cell on">40</div><div class="cell on">50</div>
+      </div>
+      <div class="row center g24" style="margin-top:6px;">
+        <span class="ptr">recvx = 0</span><span class="ptr">sendx = 0（绕回重合）</span>
+      </div>
+      <div class="row g6" style="margin-top:10px;align-items:center;">
+        <span class="small muted">sendq</span><span class="chip">G9(val=60)</span>
+      </div>
+    </div>
+
+    <div class="col center" style="width:80px;">
+      <span class="ar big" style="font-size:26px;">⟹</span>
+      <span class="small muted">G8 执行 &lt;-ch</span>
+    </div>
+
+    <div class="state" style="flex:1;border-color:var(--indigo);background:var(--indigo-bg);">
+      <div class="sh">② 之后：60 已经补上，G9 被唤醒</div>
+      <div class="row center g6">
+        <div class="cell on" style="box-shadow:0 0 0 3px rgba(99,102,241,.18);">60</div>
+        <div class="cell on">30</div><div class="cell on">40</div><div class="cell on">50</div>
+      </div>
+      <div class="row center g24" style="margin-top:6px;">
+        <span class="ptr">recvx = 1</span><span class="ptr">sendx = 1</span>
+      </div>
+      <div class="row g6" style="margin-top:10px;align-items:center;">
+        <span class="small muted">sendq</span><span class="chip grey">空</span>
+      </div>
+    </div>
+
+  </div>
+
+  <div class="col g12" style="margin-top:22px;">
+    <div class="step">
+      <div class="no">1</div>
+      <div class="tx">从 <code>recvx</code>(=0) 取走 <b>20</b> 交给 G8，<code>recvx</code> 推到 1 —— 20 是队首，先来先走</div>
+    </div>
+    <div class="step">
+      <div class="no">2</div>
+      <div class="tx">发现 sendq 有人：把 G9 怀里的 <b>60</b> 写进 <code>sendx</code>(=0) 指向的格子 —— <b class="hl">正好是刚腾空的那个</b>，然后唤醒 G9</div>
+    </div>
+    <div class="step">
+      <div class="no">3</div>
+      <div class="tx">G9 从 <code>ch &lt;-</code> 的下一行继续跑 —— 对它而言这次发送早已完成，它不需要知道中间发生了什么</div>
+    </div>
+  </div>
+
+  <div class="card hi" style="margin-top:18px;">
+    <div class="d">
+      环形指针 + 两条 FIFO 队伍 ⟹ 下一次 <code>&lt;-ch</code> 从 <code>recvx = 1</code> 拿到 <b>30</b>：
+      等待者的 60 是排在 30、40、50 后面的，<b class="hl">顺序永远不会乱</b>。
+    </div>
+  </div>
+
+</div></body></html>

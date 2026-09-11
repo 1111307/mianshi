@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="zh-CN"><head><meta charset="utf-8"><meta name="win" content="1000x520"><link rel="stylesheet" href="diagram.css">
+<style>.canvas{height:520px;}
+.card .step .tx{font-size:12.6px;}
+</style></head>
+<body><div class="canvas">
+
+  <h1><span class="n">4</span>收发决策树</h1>
+  <p class="sub">四个场景浓缩成两棵树。所有分支都在同一把锁的保护下依次判断</p>
+
+  <div class="row g24" style="margin-top:20px;align-items:flex-start;">
+
+    <div class="card hi" style="flex:1;">
+      <div class="t"><span class="pill indigo">发送</span> <code>ch &lt;- v</code></div>
+      <div class="col g10" style="margin-top:4px;">
+        <div class="step"><div class="no">1</div><div class="tx">抢锁</div></div>
+        <div class="step"><div class="no">2</div><div class="tx">已 close → <b class="hl">panic</b></div></div>
+        <div class="step"><div class="no">3</div><div class="tx">recvq 有人 → <b class="hl">手递手</b>（有仓库也绕过 ★）</div></div>
+        <div class="step"><div class="no">4</div><div class="tx">仓库有空位 → 入仓，返回</div></div>
+        <div class="step"><div class="no">5</div><div class="tx">都不行 → 揣着值挂 <code>sendq</code> 睡觉</div></div>
+      </div>
+    </div>
+
+    <div class="card hi" style="flex:1;">
+      <div class="t"><span class="pill emerald">接收</span> <code>&lt;- ch</code></div>
+      <div class="col g10" style="margin-top:4px;">
+        <div class="step"><div class="no">1</div><div class="tx">抢锁</div></div>
+        <div class="step"><div class="no">2</div><div class="tx">buf 有货 → 取走（sendq 有人？顺手补仓 + 唤醒）</div></div>
+        <div class="step"><div class="no">3</div><div class="tx">buf 空但 sendq 有人 → 手递手（只出现在无缓冲）</div></div>
+        <div class="step"><div class="no">4</div><div class="tx">已 close → 返回 <b class="hl">零值, ok=false</b></div></div>
+        <div class="step"><div class="no">5</div><div class="tx">都不行 → 挂 <code>recvq</code> 睡觉</div></div>
+      </div>
+    </div>
+
+  </div>
+
+  <div class="row g20" style="margin-top:20px;align-items:stretch;">
+
+    <div class="card" style="flex:1;border-color:var(--rose);">
+      <div class="t">close 是一次性广播</div>
+      <div class="d">
+        · buf 里的存货<b class="hl">不清空</b>：之后仍能读到，读完才开始返回零值<br>
+        · recvq 全员唤醒 → 每人拿到 零值 + ok=false<br>
+        · sendq 全员唤醒 → 每人的 <code>ch &lt;-</code> 直接 panic —— 这就是「不要让接收方 close」的根源
+      </div>
+    </div>
+
+    <div class="card" style="flex:1;">
+      <div class="t">为什么两边顺序不对称</div>
+      <div class="d">
+        · 发送先看 recvq：recvq 有人 ⟹ 仓库必空（有货早被取走），直接递过去省掉入仓 + 出仓两次拷贝<br>
+        · 接收先看 buf：为了 <b class="hl">FIFO 保序</b> —— 否则等待 sender 的新货就插了队
+      </div>
+    </div>
+
+  </div>
+
+</div></body></html>

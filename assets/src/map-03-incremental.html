@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="zh-CN"><head><meta charset="utf-8"><meta name="win" content="1000x470"><link rel="stylesheet" href="diagram.css">
+<style>.canvas{height:470px;}</style></head>
+<body><div class="canvas">
+
+  <h1><span class="n">3</span>渐进式搬迁：不 STW，蹭着读写顺路搬</h1>
+  <p class="sub">扩容开始只换数组、不搬数据；之后每次读写搬「你访问到的那个老桶」+ 顺带一个，直到搬空才释放老桶</p>
+
+  <div class="row g16" style="margin-top:22px;align-items:stretch;">
+
+    <div class="stage">
+      <div class="lbl">① 扩容开始</div>
+      <div class="small muted">old 待搬</div>
+      <div class="barr tight">
+        <div class="bcell sm f"></div><div class="bcell sm f"></div><div class="bcell sm f"></div><div class="bcell sm f"></div>
+      </div>
+      <span class="ar down" style="font-size:14px;">↓</span>
+      <div class="small muted">new 全空</div>
+      <div class="barr tight">
+        <div class="bcell sm n"></div><div class="bcell sm n"></div><div class="bcell sm n"></div><div class="bcell sm n"></div>
+        <div class="bcell sm n"></div><div class="bcell sm n"></div><div class="bcell sm n"></div><div class="bcell sm n"></div>
+      </div>
+      <div class="cap">0 / 8 就位</div>
+    </div>
+
+    <div class="stage now">
+      <div class="lbl">② 第一次读写</div>
+      <div class="small muted">old 剩 3 桶</div>
+      <div class="barr tight">
+        <div class="bcell sm gone"></div><div class="bcell sm f"></div><div class="bcell sm f"></div><div class="bcell sm f"></div>
+      </div>
+      <span class="ar down" style="font-size:14px;">↓ 搬走 1 个老桶</span>
+      <div class="small muted">new 得 2 桶（一分为二）</div>
+      <div class="barr tight">
+        <div class="bcell sm f"></div><div class="bcell sm f"></div><div class="bcell sm n"></div><div class="bcell sm n"></div>
+        <div class="bcell sm n"></div><div class="bcell sm n"></div><div class="bcell sm n"></div><div class="bcell sm n"></div>
+      </div>
+      <div class="cap">2 / 8 就位</div>
+    </div>
+
+    <div class="stage now">
+      <div class="lbl">③ 第二次读写</div>
+      <div class="small muted">old 剩 2 桶</div>
+      <div class="barr tight">
+        <div class="bcell sm gone"></div><div class="bcell sm gone"></div><div class="bcell sm f"></div><div class="bcell sm f"></div>
+      </div>
+      <span class="ar down" style="font-size:14px;">↓</span>
+      <div class="small muted">new 再得 2 桶</div>
+      <div class="barr tight">
+        <div class="bcell sm f"></div><div class="bcell sm f"></div><div class="bcell sm f"></div><div class="bcell sm f"></div>
+        <div class="bcell sm n"></div><div class="bcell sm n"></div><div class="bcell sm n"></div><div class="bcell sm n"></div>
+      </div>
+      <div class="cap">4 / 8 就位</div>
+    </div>
+
+    <div class="stage">
+      <div class="lbl">④ 搬完</div>
+      <div class="small muted">old 释放</div>
+      <div class="barr tight">
+        <div class="bcell sm gone"></div><div class="bcell sm gone"></div><div class="bcell sm gone"></div><div class="bcell sm gone"></div>
+      </div>
+      <span class="ar down" style="font-size:14px;">↓</span>
+      <div class="small muted">new 全部就位</div>
+      <div class="barr tight">
+        <div class="bcell sm f"></div><div class="bcell sm f"></div><div class="bcell sm f"></div><div class="bcell sm f"></div>
+        <div class="bcell sm f"></div><div class="bcell sm f"></div><div class="bcell sm f"></div><div class="bcell sm f"></div>
+      </div>
+      <div class="cap">8 / 8，老桶内存释放</div>
+    </div>
+
+  </div>
+
+  <div class="card hi" style="margin-top:20px;">
+    <div class="t">搬迁期间的读写规则</div>
+    <div class="d">
+      <b class="hl">查找 / 删除：</b>先按新位置算，看目标老桶搬没搬 —— 没搬就去老桶里找。
+      &nbsp;&nbsp;<b class="hl">写入：</b>只写新桶；若对应老桶还没搬，先把那个桶搬了再写。
+    </div>
+  </div>
+
+</div></body></html>

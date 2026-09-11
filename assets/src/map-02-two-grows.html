@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="zh-CN"><head><meta charset="utf-8"><meta name="win" content="1000x470"><link rel="stylesheet" href="diagram.css">
+<style>.canvas{height:470px;}</style></head>
+<body><div class="canvas">
+
+  <h1><span class="n">2</span>两种扩容，治两种病</h1>
+  <p class="sub">触发检查都在写路径 <code>mapassign</code> 里；两者都只扩不缩 —— 元素删光桶数也不减</p>
+
+  <div class="row g24" style="margin-top:22px;align-items:stretch;">
+
+    <div class="card hi" style="flex:1;">
+      <div class="t"><span class="pill indigo">翻倍扩容</span><span class="small muted">负载因子 &gt; 6.5</span></div>
+      <div class="d" style="margin-bottom:14px;">
+        <b class="hl">病根：</b>桶真的不够装了<br>
+        <b class="hl">动作：</b>B → B+1，桶数 ×2，容量翻倍
+      </div>
+
+      <div class="col center g8">
+        <div class="barr">
+          <div class="bcell f"></div><div class="bcell f"></div><div class="bcell f"></div><div class="bcell f"></div>
+        </div>
+        <div class="small muted">4 个桶，全部装得很满</div>
+        <span class="ar down">↓ &nbsp;桶数翻倍</span>
+        <div class="barr">
+          <div class="bcell f"></div><div class="bcell f"></div><div class="bcell f"></div><div class="bcell f"></div>
+          <div class="bcell n"></div><div class="bcell n"></div><div class="bcell n"></div><div class="bcell n"></div>
+        </div>
+        <div class="small muted">8 个桶，装载率回落到一半</div>
+      </div>
+
+      <div class="d" style="margin-top:14px;">
+        老桶按<b class="hl">新增的那一位</b>一分为二，各奔 i 和 i + 2<sup>B</sup>（第 4 张）
+      </div>
+    </div>
+
+    <div class="card" style="flex:1;border-color:var(--amber);">
+      <div class="t"><span class="pill amber">等量扩容</span><span class="small muted">溢出桶 ≥ 桶数量</span></div>
+      <div class="d" style="margin-bottom:14px;">
+        <b class="hl">病根：</b>桶够用，但删删插插把元素打散了，溢出链越拖越长<br>
+        <b class="hl">动作：</b>B 不变，桶数不变，只重新挤紧
+      </div>
+
+      <div class="col center g8">
+        <div class="row g6">
+          <div class="bcell f"></div><div class="bcell f"></div>
+          <div class="bcell"></div><div class="bcell"></div>
+          <div class="ar down" style="font-size:15px;margin-left:4px;">→</div>
+          <div class="obox">溢出链 · 3 个桶</div>
+        </div>
+        <div class="small muted">主桶有空格，元素却挂在链上 —— 碎片</div>
+        <span class="ar down amber">↓ &nbsp;重新塞进新的空桶</span>
+        <div class="row g6">
+          <div class="bcell f"></div><div class="bcell f"></div><div class="bcell f"></div><div class="bcell f"></div>
+        </div>
+        <div class="small muted">桶数还是 4，但溢出链消失、元素挤紧</div>
+      </div>
+
+      <div class="d" style="margin-top:14px;">
+        没有新增位可用，所有人回原索引 —— 靠"塞进全新空桶"自然挤紧
+      </div>
+    </div>
+
+  </div>
+
+  <div class="row g12" style="margin-top:22px;">
+    <span class="pill grey">小 map 免检</span>
+    <span class="small">元素数 ≤ 8 时一个桶装得下，条件里带 <code>count &gt; 8</code> 门槛，永不扩容</span>
+  </div>
+
+</div></body></html>

@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="zh-CN"><head><meta charset="utf-8"><meta name="win" content="1000x500"><link rel="stylesheet" href="diagram.css">
+<style>.canvas{height:500px;}
+.erow{display:flex;justify-content:space-between;font-size:13px;padding:2.5px 0;}
+.erow .mono{font-family:Consolas,monospace;color:var(--indigo-d);font-weight:700;}
+</style></head>
+<body><div class="canvas">
+
+  <h1><span class="n">4</span>分流只看新增的那一位</h1>
+  <p class="sub">桶数 2<sup>B</sup> → 2<sup>B+1</sup>，新索引 = hash 低 B+1 位。多出来的那一位，就是分流的全部依据</p>
+
+  <div class="row g16" style="margin-top:18px;">
+    <div class="bit3">
+      <div class="b new">x</div><div class="b dim">1</div><div class="b dim">0</div>
+    </div>
+    <div class="col">
+      <span class="small"><b class="hl">x = 新增位</b>（权重 2<sup>B</sup>），搬迁时现算，不用重算整个 hash</span>
+      <span class="small muted">低 3 位：老桶 2 里的人，低 2 位都是 <code>10</code>，只差最高的这一位</span>
+    </div>
+  </div>
+
+  <div class="row g20" style="margin-top:20px;align-items:center;">
+    <div class="card" style="width:250px;border-color:#c7d2fe;">
+      <div class="t">A、B <span class="small muted">低 3 位 = 010</span></div>
+      <div class="erow"><span>元素 A</span><span class="mono">0 1 0</span></div>
+      <div class="erow"><span>元素 B</span><span class="mono">0 1 0</span></div>
+    </div>
+    <div class="col center" style="width:210px;">
+      <span class="pill emerald">新增位 = 0</span>
+      <span class="ar" style="margin-top:2px;">⟶ &nbsp;留在原索引</span>
+    </div>
+    <div class="card" style="width:200px;border-color:var(--indigo);background:var(--indigo-bg);">
+      <div class="t">新桶 2</div>
+      <div class="small muted">索引 i = 2</div>
+    </div>
+  </div>
+
+  <div class="row g20" style="margin-top:16px;align-items:center;">
+    <div class="card" style="width:250px;border-color:#c7d2fe;">
+      <div class="t">C、D <span class="small muted">低 3 位 = 110</span></div>
+      <div class="erow"><span>元素 C</span><span class="mono">1 1 0</span></div>
+      <div class="erow"><span>元素 D</span><span class="mono">1 1 0</span></div>
+    </div>
+    <div class="col center" style="width:210px;">
+      <span class="pill amber">新增位 = 1</span>
+      <span class="ar amber" style="margin-top:2px;">⟶ &nbsp;i + 2<sup>B</sup></span>
+    </div>
+    <div class="card" style="width:200px;border-color:var(--amber);background:var(--amber-bg);">
+      <div class="t">新桶 6</div>
+      <div class="small muted">索引 i + 2<sup>B</sup> = 2 + 4</div>
+    </div>
+  </div>
+
+  <div class="card hi" style="margin-top:20px;">
+    <div class="d">
+      一个老桶永远只分裂成<b class="hl">两个</b>新桶 —— 不用重算哈希、不用全表重排，只看一个 bit。
+      等量扩容没有这个新增位可用，所有人回原索引，靠“塞进全新空桶”自然挤紧。
+    </div>
+  </div>
+
+</div></body></html>

@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="zh-CN"><head><meta charset="utf-8"><meta name="win" content="1000x500"><link rel="stylesheet" href="diagram.css">
+<style>.canvas{height:500px;}
+.stack{border:2px solid var(--indigo);border-radius:11px;background:#fff;padding:10px 14px;min-width:150px;}
+.stack .sn{font-size:12px;font-weight:700;color:var(--indigo-d);margin-bottom:7px;text-align:center;}
+.val{font-family:Consolas,monospace;font-size:20px;font-weight:700;color:var(--indigo-d);text-align:center;
+  background:var(--indigo-bg);border-radius:7px;padding:5px 0;}
+</style></head>
+<body><div class="canvas">
+
+  <h1><span class="n">3</span>无缓冲：没有仓库，纯手递手</h1>
+  <p class="sub"><code>make(chan int)</code> —— buf 不存在。先到的一方必须睡觉，等另一方到场，这就是「同步点」的底层含义</p>
+
+  <div class="row g16" style="margin-top:20px;align-items:flex-start;">
+
+    <div class="col g10" style="flex:1;">
+      <span class="pill indigo">① G1 执行 ch &lt;- 7</span>
+      <div class="row g12 center" style="margin-top:6px;">
+        <div class="stack">
+          <div class="sn">G1 的栈</div>
+          <div class="val">7</div>
+        </div>
+        <span class="ar down">↓ &nbsp;没仓库可放、recvq 没人</span>
+        <div class="queue">
+          <div class="qn">sendq</div>
+          <div class="row g6"><span class="chip">G1(val=7)</span></div>
+        </div>
+      </div>
+      <div class="small muted" style="margin-left:4px;">7 留在 G1 自己的栈上，G1 挂起睡觉</div>
+    </div>
+
+    <div class="col center" style="width:70px;padding-top:60px;">
+      <span class="ar big" style="font-size:26px;">⟹</span>
+      <span class="small muted" style="text-align:center;">G2 来了<br>&lt;- ch</span>
+    </div>
+
+    <div class="col g10" style="flex:1;">
+      <span class="pill emerald">② 栈对栈直接搬</span>
+      <div class="row g12 center" style="margin-top:6px;">
+        <div class="stack">
+          <div class="sn">G1 的栈</div>
+          <div class="val" style="color:#94a3b8;background:var(--soft);">7 →</div>
+        </div>
+        <span class="ar">⟶</span>
+        <div class="stack" style="border-color:var(--emerald);">
+          <div class="sn" style="color:var(--emerald);">G2 的栈</div>
+          <div class="val" style="color:var(--emerald);background:var(--emerald-bg);">7</div>
+        </div>
+      </div>
+      <div class="small muted" style="margin-left:4px;">runtime 直接 memmove，然后唤醒 G1</div>
+    </div>
+
+  </div>
+
+  <div class="card hi" style="margin-top:24px;">
+    <div class="d">
+      <b class="hl">7 从头到尾没进过 channel 的任何存储</b> —— 不是「先放进 channel 再取出来」，而是两个 goroutine 栈之间的直接搬运。
+      所以无缓冲 chan 不是「容量为 0 的队列」，它的语义是<b class="hl">一次交接会合（rendezvous）</b>：
+      发送和接收必须同时在场，谁先到谁付出等待的代价。
+    </div>
+  </div>
+
+</div></body></html>

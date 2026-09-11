@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="zh-CN"><head><meta charset="utf-8"><meta name="win" content="1000x475"><link rel="stylesheet" href="diagram.css">
+<style>.canvas{height:475px;}</style></head>
+<body><div class="canvas">
+
+  <h1><span class="n">1</span>map 的几何形状</h1>
+  <p class="sub">一次 hash 分两段用途；桶数恒为 2<sup>B</sup>，每桶固定 8 个槽，装满就挂溢出桶串成链</p>
+
+  <div class="row g16" style="margin-top:20px;">
+    <div class="bitbar">
+      <div class="seg hi">高 8 位 → tophash 指纹</div>
+      <div class="seg lo">低 B 位 → 桶索引（图中 B = 2，即 0~3）</div>
+    </div>
+    <span class="small muted">定位桶靠低位，桶内先比指纹再比 key</span>
+  </div>
+
+  <div class="row g24" style="align-items:flex-start;margin-top:26px;">
+
+    <div class="row g24" style="align-items:flex-start;">
+      <div class="col center g6">
+        <div class="bucket">
+          <div class="name">bucket 0</div>
+          <div class="slots">
+            <div class="slot on">k</div><div class="slot on">k</div><div class="slot on">k</div><div class="slot">·</div>
+            <div class="slot on">k</div><div class="slot on">k</div><div class="slot">·</div><div class="slot">·</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="col center g6">
+        <div class="bucket">
+          <div class="name">bucket 1</div>
+          <div class="slots">
+            <div class="slot on">k</div><div class="slot on">k</div><div class="slot on">k</div><div class="slot on">k</div>
+            <div class="slot on">k</div><div class="slot on">k</div><div class="slot on">k</div><div class="slot on">k</div>
+          </div>
+        </div>
+        <span class="ar down">↓</span>
+        <div class="obox">溢出桶 · 8 槽</div>
+        <span class="ar down">↓</span>
+        <div class="obox">溢出桶 · 8 槽</div>
+      </div>
+
+      <div class="col center g6">
+        <div class="bucket">
+          <div class="name">bucket 2</div>
+          <div class="slots">
+            <div class="slot on">k</div><div class="slot">·</div><div class="slot">·</div><div class="slot">·</div>
+            <div class="slot">·</div><div class="slot">·</div><div class="slot">·</div><div class="slot">·</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="col center g6">
+        <div class="bucket">
+          <div class="name">bucket 3</div>
+          <div class="slots">
+            <div class="slot">·</div><div class="slot">·</div><div class="slot">·</div><div class="slot">·</div>
+            <div class="slot">·</div><div class="slot">·</div><div class="slot">·</div><div class="slot">·</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="col g12 grow">
+      <div class="card hi">
+        <div class="t">桶装满 → 溢出桶</div>
+        <div class="d">
+          一个桶 8 个槽用尽后，挂一个溢出桶继续存。<br>
+          溢出链越长，查找时线性扫描越久 —— 这是<b class="hl">等量扩容</b>要治的病。
+        </div>
+      </div>
+      <div class="card">
+        <div class="t">为什么桶数必须是 2 的幂</div>
+        <div class="d">
+          取模退化成位与 <code>hash &amp; (2^B - 1)</code>；<br>
+          翻倍扩容时分流只需看<b class="hl">新增的那一位</b>。
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <div class="row g12" style="margin-top:24px;">
+    <span class="pill amber">溢出桶 ≥ 桶数量</span>
+    <span class="small">→ 等量扩容（第 2 张）</span>
+    <span class="pill indigo" style="margin-left:16px;">元素数 / 桶数 &gt; 6.5</span>
+    <span class="small">→ 翻倍扩容（第 2 张）</span>
+  </div>
+
+</div></body></html>

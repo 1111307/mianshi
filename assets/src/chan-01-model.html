@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="zh-CN"><head><meta charset="utf-8"><meta name="win" content="1000x450"><link rel="stylesheet" href="diagram.css">
+<style>.canvas{height:450px;}</style></head>
+<body><div class="canvas">
+
+  <h1><span class="n">1</span>channel 的心智模型</h1>
+  <p class="sub">一个环形仓库 + 两条无界等待队伍 + 一把锁。等不到机会的 goroutine 就进队伍睡觉</p>
+
+  <div class="row" style="margin-top:16px;justify-content:space-between;">
+    <span class="pill indigo">发送方 G&nbsp;&nbsp;ch &lt;- v</span>
+    <span class="pill emerald">接收方 G&nbsp;&nbsp;&lt;- ch</span>
+  </div>
+
+  <div class="row g16 center" style="margin-top:10px;">
+
+    <div class="queue">
+      <div class="qn">sendq · 等着发货</div>
+      <div class="row g6">
+        <span class="chip">G3</span><span class="chip">G1</span>
+      </div>
+      <div class="small muted" style="margin-top:8px;">值揣在自己栈上</div>
+    </div>
+
+    <span class="ar">⟶</span>
+
+    <div class="ring">
+      <div class="rn">buf · 环形仓库（容量 = make 的 N）</div>
+      <div class="row g6 center">
+        <div class="cell on">20</div>
+        <div class="cell on">30</div>
+        <div class="cell empty">·</div>
+        <div class="cell empty">·</div>
+      </div>
+      <div class="row center g24" style="margin-top:7px;">
+        <span class="ptr">↑ recvx = 0（读出位）</span>
+        <span class="ptr">↑ sendx = 2（写入位）</span>
+      </div>
+    </div>
+
+    <span class="ar">⟶</span>
+
+    <div class="queue">
+      <div class="qn">recvq · 等着收货</div>
+      <div class="row g6">
+        <span class="chip">G2</span>
+      </div>
+      <div class="small muted" style="margin-top:8px;">空手睡觉</div>
+    </div>
+
+  </div>
+
+  <div class="row g16" style="margin-top:22px;">
+    <div class="card hi grow">
+      <div class="t">三个容易误解的点</div>
+      <div class="d">
+        ① <b class="hl">不是无锁</b>：收发都过同一把 mutex，只是临界区极短<br>
+        ② <b class="hl">阻塞 sender 的值不占 channel 内存</b>：揣在自己栈上，chan 只多一个队列节点<br>
+        ③ <b class="hl">两条队伍都无界</b>：没有容量参数，长度只由阻塞的 goroutine 数决定
+      </div>
+    </div>
+  </div>
+
+</div></body></html>
