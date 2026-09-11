@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="zh-CN"><head><meta charset="utf-8"><meta name="win" content="1000x600"><link rel="stylesheet" href="diagram.css">
+<style>.canvas{height:600px;padding:24px 28px;}</style></head>
+<body><div class="canvas">
+
+  <h1><span class="n">1</span>MySQL 服务端分层架构</h1>
+  <p class="sub">常见说法是<b>两层</b>（Server 层 + 存储引擎层），展开是<b>四层</b>；右侧是一条 SQL 的实际穿行路径</p>
+
+  <div class="col g10" style="margin-top:16px;">
+
+    <div class="layer c1">
+      <div class="lnum">1</div>
+      <div class="lmain">
+        <div class="lt">连接层 Connection Layer</div>
+        <div class="ld">连接管理 · 线程（一连接一线程）· 认证鉴权 · MySQL 协议解析</div>
+      </div>
+      <div class="lflow">认证 → 分配线程<br>权限此刻确定（改权限要重连）</div>
+    </div>
+
+    <div class="layer c2">
+      <div class="lnum">2</div>
+      <div class="lmain">
+        <div class="lt">服务层 Server Layer</div>
+        <div class="ld">解析器 → 预处理器 → 优化器 → 执行器<br>
+          binlog / error log / slow log / general log · 权限、字符集、视图、存储过程、复制</div>
+      </div>
+      <div class="lflow">SQL → 解析树 → 执行计划<br>→ 调用引擎接口，逐行取数</div>
+    </div>
+
+    <div class="layer c3">
+      <div class="lnum">3</div>
+      <div class="lmain">
+        <div class="lt">存储引擎层 Storage Engine 　<span class="pill emerald">插件式，可替换</span></div>
+        <div class="ld">InnoDB（默认）/ MyISAM / Memory / Archive<br>
+          <b class="hl">redo log · undo log · Buffer Pool</b> —— 都是 InnoDB 的实现，不属于 Server 层</div>
+      </div>
+      <div class="lflow">Buffer Pool 命中？<br>否则读磁盘页；update 还写 undo + redo</div>
+    </div>
+
+    <div class="layer c4">
+      <div class="lnum">4</div>
+      <div class="lmain">
+        <div class="lt">文件系统层 File System</div>
+        <div class="ld">.ibd 数据文件 · redo 日志文件 · undo 表空间 · binlog 文件 · 数据字典</div>
+      </div>
+      <div class="lflow">真实文件 IO<br>O_DIRECT / fsync 等调优在这一层</div>
+    </div>
+
+  </div>
+
+  <div class="card" style="margin-top:16px;border-color:var(--indigo);">
+    <div class="t">这个分层直接解释了两阶段提交的根因</div>
+    <div class="d">
+      <span class="pill indigo">redo log</span> 在 <b>③ 引擎层</b> 写　·　
+      <span class="pill emerald">binlog</span> 在 <b>② 服务层</b> 写　——　
+      <b class="hl">两份日志跨层、分开写，就必须保证一致</b>，这就是为什么需要 2PC + prepare 中间态。
+    </div>
+  </div>
+
+</div></body></html>
