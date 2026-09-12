@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="zh-CN"><head><meta charset="utf-8"><meta name="win" content="1000x720"><link rel="stylesheet" href="diagram.css">
+<style>.canvas{height:720px;padding:24px 28px;}</style></head>
+<body><div class="canvas">
+
+  <h1><span class="n">2</span>从 kubectl apply 到流量进来：一条命令的接力</h1>
+  <p class="sub">你只写「期望」，下面这串接力负责把它变成现实；每一步都是 watch 驱动</p>
+
+  <div class="col g4" style="margin-top:15px;">
+
+    <div class="frow">
+      <div class="no">1</div><div class="actor cli">kubectl</div>
+      <div class="actx">apply -f deployment.yaml：<b>期望 3 副本</b>，只提交这份期望，不指定跑在哪台机器</div>
+    </div>
+    <div class="vstep"><span class="ar down" style="font-size:14px;">↓</span></div>
+
+    <div class="frow">
+      <div class="no">2</div><div class="actor api">kube-apiserver</div>
+      <div class="actx">认证 → 鉴权 → 准入 → 校验 → 对象<b>写入 etcd</b>（此刻集群里多了个 Deployment 对象，还没有任何 Pod）</div>
+    </div>
+    <div class="vstep"><span class="ar down" style="font-size:14px;">↓</span></div>
+
+    <div class="frow">
+      <div class="no">3</div><div class="actor cm">Deployment 控制器</div>
+      <div class="actx">watch 到新 Deployment → 对账：期望 RS 数 = 1，实际 0 → <b>创建 ReplicaSet</b>（把 Pod 模板和副本数传下去）</div>
+    </div>
+    <div class="vstep"><span class="ar down" style="font-size:14px;">↓</span></div>
+
+    <div class="frow">
+      <div class="no">4</div><div class="actor cm">ReplicaSet 控制器</div>
+      <div class="actx">watch 到新 RS → 对账：期望 3 个 Pod，实际 0 → <b>创建 3 个 Pod</b>，此时 <code>.spec.nodeName 为空</code>（PENDING，未调度）</div>
+    </div>
+    <div class="vstep"><span class="ar down" style="font-size:14px;">↓</span></div>
+
+    <div class="frow">
+      <div class="no">5</div><div class="actor sch">kube-scheduler</div>
+      <div class="actx">watch 到「未调度的 Pod」→ Filter 剔除资源不足/亲和性不符的节点 → Score 打分 → <b>写回 nodeName</b>（Binding）。<span class="muted">只写一个字段，不碰容器</span></div>
+    </div>
+    <div class="vstep"><span class="ar down" style="font-size:14px;">↓</span></div>
+
+    <div class="frow">
+      <div class="no">6</div><div class="actor kub" style="flex-basis:186px;white-space:nowrap;">kubelet（选中节点）</div>
+      <div class="actx">watch 到「分给本节点的 Pod」→ CRI 拉镜像 → 建 sandbox → 跑 initContainers → 起业务容器</div>
+    </div>
+    <div class="vstep"><span class="ar down" style="font-size:14px;">↓</span></div>
+
+    <div class="frow">
+      <div class="no">7</div><div class="actor kub">kubelet</div>
+      <div class="actx">readiness 探针通过 → <b>回写 Pod.status = Running</b> → apiserver → etcd（这一刻状态才和期望对齐）</div>
+    </div>
+    <div class="vstep"><span class="ar down" style="font-size:14px;">↓</span></div>
+
+    <div class="frow">
+      <div class="no">8</div><div class="actor px">kube-proxy</div>
+      <div class="actx">watch 到 Endpoints 更新 → 刷本机 <b>iptables / ipvs</b> 规则：Service 的 VIP 有了真实后端</div>
+    </div>
+    <div class="vstep"><span class="ar down" style="font-size:14px;">↓</span></div>
+
+    <div class="frow">
+      <div class="no">9</div><div class="actor cli" style="background:var(--emerald-bg);color:var(--emerald);">流量进来</div>
+      <div class="actx">客户端访问 Service → 转发到 Pod → <b>整个链路打通</b></div>
+    </div>
+
+  </div>
+
+  <div class="row g16" style="margin-top:16px;align-items:stretch;">
+    <div class="card hi" style="flex:1;">
+      <div class="t">关键：期望状态 vs 实际状态是两条路</div>
+      <div class="d">
+        <span class="pill indigo">spec</span> 期望，由<b>命令面</b>（kubectl / 控制器）写入　·　
+        <span class="pill emerald">status</span> 实际，由<b>节点面</b>（kubelet）回报<br>
+        控制器做的事只有一件：<b class="hl">不断把 status 扳回 spec</b>。所以任何一步失败都不用管，下一轮对账会重试。
+      </div>
+    </div>
+    <div class="card" style="flex:1;border-color:#c084fc;">
+      <div class="t">为什么叫「声明式」</div>
+      <div class="d">
+        你说的是<b>要什么</b>（3 个副本），不是<b>怎么做</b>（在哪台机器起、怎么拉镜像）。<br>
+        于是扩容、滚动更新、故障自愈都变成同一件事：<b class="hl">改期望值，让循环自己收敛</b>。
+      </div>
+    </div>
+  </div>
+
+</div></body></html>

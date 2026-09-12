@@ -23,3 +23,5 @@ bash assets/src/render.sh
 
 - `map-0N-*.png` —— map 扩容机制
 - `chan-0N-*.png` —— channel 底层原理
+- `mysql-0N-*.png` —— MySQL（2PC、分层架构）
+- `k8s-0N-*.png` —— K8s 组件协同

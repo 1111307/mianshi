@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="zh-CN"><head><meta charset="utf-8"><meta name="win" content="1000x790"><link rel="stylesheet" href="diagram.css">
+<style>.canvas{height:790px;padding:24px 28px;}</style></head>
+<body><div class="canvas">
+
+  <h1><span class="n">1</span>K8s 组件协同：一切围着 apiserver 转</h1>
+  <p class="sub">组件之间<b>互不通信</b>；apiserver 是唯一能读写 etcd 的组件；一切靠 watch 事件驱动，不轮询</p>
+
+  <div class="col center" style="margin-top:14px;">
+    <span class="pill grey">kubectl / CI / Dashboard　（客户端）</span>
+    <div class="vstep"><span class="ar down">↓</span></div>
+    <span class="small muted" style="margin-top:-4px;">HTTPS 请求 / List-Watch 长连接</span>
+  </div>
+
+  <div class="row center" style="margin-top:10px;">
+    <div class="k8s-hub" style="min-width:600px;">
+      <div class="t">kube-apiserver</div>
+      <div class="d">认证 → 鉴权 → 准入控制 → 校验 → 读写 etcd　·　<b>所有组件的唯一对话对象</b></div>
+    </div>
+  </div>
+
+  <div class="row g24" style="margin-top:8px;justify-content:center;">
+    <span class="dbl">⇅</span><span class="dbl">⇅</span><span class="dbl">⇅</span>
+  </div>
+
+  <div class="row g16" style="margin-top:6px;align-items:stretch;">
+
+    <div class="k8s-sat" style="border-color:#94a3b8;">
+      <div class="t">etcd</div>
+      <div class="d">
+        唯一数据库，<b class="hl">只有 apiserver 读写</b><br>
+        Raft 多数派 · RPO=0<br>
+        提供 watch，是事件驱动的源头
+      </div>
+    </div>
+
+    <div class="k8s-sat" style="border-color:var(--amber);">
+      <div class="t">kube-scheduler</div>
+      <div class="d">
+        watch <b class="hl">未调度</b>的 Pod<br>
+        Filter（能不能去）→ Score（哪个更好）<br>
+        写回 <code>.spec.nodeName</code> —— 只决策，<b>不起容器</b>
+      </div>
+    </div>
+
+    <div class="k8s-sat" style="border-color:#c084fc;">
+      <div class="t">kube-controller-manager</div>
+      <div class="d">
+        一堆控制器的集合，跑 <b class="hl">reconcile 循环</b><br>
+        Deployment 控制器 → 生成 ReplicaSet<br>
+        ReplicaSet 控制器 → 生成 Pod<br>
+        Node 控制器、Endpoint 控制器……
+      </div>
+    </div>
+
+  </div>
+
+  <div class="row center" style="margin-top:8px;"><span class="dbl">⇅</span></div>
+
+  <div class="k8s-node" style="margin-top:4px;">
+    <div class="clbl">Worker Node（每台机器上都跑这两个）</div>
+    <div class="row g16" style="align-items:stretch;">
+      <div class="k8s-sat" style="border-color:var(--emerald);">
+        <div class="t">kubelet　<span class="pill emerald">节点的执行者</span></div>
+        <div class="d">watch 到分给本节点的 Pod → 通过 CRI 调 containerd：拉镜像 → sandbox → initContainers → 业务容器；
+          执行 liveness/readiness 探针；<b class="hl">持续把容器状态回写 Pod.status</b></div>
+      </div>
+      <div class="k8s-sat" style="border-color:#0891b2;">
+        <div class="t">kube-proxy</div>
+        <div class="d">watch Service / Endpoints 变化 → 刷新本机 <b class="hl">iptables / ipvs</b> 规则，
+          让 Service 的流量能落到 Pod 上</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card hi" style="margin-top:14px;">
+    <div class="t">三条铁律（面试讲协同的核心）</div>
+    <div class="d">
+      ① <b class="hl">组件之间零直连</b>：scheduler 和 kubelet 从不直接通信，全靠 apiserver 中转 —— 所以挂掉一个不阻塞别人<br>
+      ② <b class="hl">只有 apiserver 碰 etcd</b>：整个集群的读写入口唯一，权限、审计、准入都在这里收口<br>
+      ③ <b class="hl">全部 watch 驱动 + 声明式对账</b>：没人"指挥"，每个组件只看自己关心的对象，变化就干活
+    </div>
+  </div>
+
+</div></body></html>

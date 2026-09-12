@@ -163,6 +163,32 @@ b.hl{color:var(--indigo-d);}
 .note-inline{font-size:11px;color:var(--muted);margin-left:8px;}
 .addr{border:2px dashed var(--indigo);border-radius:10px;padding:5px 9px;background:#fff;}
 
+/* K8s 组件 */
+.k8s-hub{border:2.5px solid var(--indigo);border-radius:13px;background:var(--indigo-bg);
+  padding:11px 20px;text-align:center;}
+.k8s-hub .t{font-size:17px;font-weight:800;color:var(--indigo-d);letter-spacing:.3px;}
+.k8s-hub .d{font-size:11.5px;color:#475569;margin-top:3px;}
+.k8s-sat{border:2px solid var(--line);border-radius:11px;background:#fff;padding:10px 13px;flex:1;}
+.k8s-sat .t{font-size:13.5px;font-weight:700;color:var(--ink);}
+.k8s-sat .d{font-size:11.5px;color:#475569;line-height:1.7;margin-top:4px;}
+.k8s-node{border:2px dashed var(--emerald);border-radius:14px;padding:11px 14px;background:#f7fefb;}
+.k8s-node .clbl{font-size:12px;font-weight:700;color:var(--emerald);margin-bottom:8px;}
+.dbl{color:var(--indigo);font-weight:700;font-size:19px;line-height:1;}
+
+/* 时序行 */
+.frow{display:flex;align-items:flex-start;gap:11px;}
+.frow .no{flex:0 0 26px;width:26px;height:26px;border-radius:50%;background:var(--indigo);color:#fff;
+  font-size:13px;font-weight:700;display:flex;align-items:center;justify-content:center;}
+.actor{flex:0 0 154px;font-size:12.5px;font-weight:700;padding:4px 9px;border-radius:8px;text-align:center;}
+.actor.cli{background:#f1f5f9;color:#334155;}
+.actor.api{background:var(--indigo-bg);color:var(--indigo-d);}
+.actor.cm{background:#f3e8ff;color:#7e22ce;}
+.actor.sch{background:var(--amber-bg);color:var(--amber);}
+.actor.kub{background:var(--emerald-bg);color:var(--emerald);}
+.actor.px{background:#ecfeff;color:#0891b2;}
+.frow .actx{flex:1;font-size:12.5px;color:#334155;line-height:1.6;padding-top:4px;}
+.vstep{display:flex;justify-content:center;padding:2px 0;}
+
 /* 步骤 */
 .step{display:flex;gap:11px;align-items:flex-start;}
 .step .no{flex:0 0 24px;width:24px;height:24px;border-radius:50%;background:var(--indigo);color:#fff;
