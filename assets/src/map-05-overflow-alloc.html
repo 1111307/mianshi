@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="zh-CN"><head><meta charset="utf-8"><meta name="win" content="1000x640"><link rel="stylesheet" href="diagram.css">
+<style>.canvas{height:640px;padding:24px 28px;}
+.slot.on2{background:var(--indigo-bg);border-color:var(--indigo);color:var(--indigo-d);font-weight:700;}
+.slot.ovf{background:var(--amber-bg);border-color:var(--amber);color:var(--amber);font-weight:700;}
+</style></head>
+<body><div class="canvas">
+
+  <h1><span class="n">1</span>溢出桶是怎么分配的：一次预分配 + 顺链取用</h1>
+  <p class="sub">为了少做 malloc，<code>makeBucketArray</code> 会把预估要用的溢出桶<b>一次性分配在桶数组末尾</b></p>
+
+  <div class="card hi" style="margin-top:16px;">
+    <div class="t">① 创建时：把溢出桶预分配在数组末尾</div>
+    <div class="d" style="margin-bottom:10px;">
+      <code>runtime/map.go:359 makeBucketArray()</code>：常规桶 <code>2^B</code> 个；
+      若 <code>B &gt;= 4</code>，额外加 <code>2^(B-4)</code> 个（约常规桶数的 6.25%，按中位数负载估算）
+    </div>
+
+    <div class="brow">
+      <div class="addr">
+        <div class="brow">
+          <span class="blab">常规桶 2^B</span>
+          <div class="slot empty"></div><div class="slot empty"></div><div class="slot empty"></div>
+          <div class="slot empty"></div><div class="slot empty"></div><div class="slot empty"></div>
+        </div>
+      </div>
+      <span class="blab amber" style="min-width:auto;margin-left:10px;">＋预分配溢出桶 2^(B-4)</span>
+      <div class="addr" style="border-color:var(--amber);">
+        <div class="brow">
+          <div class="slot ovf">□</div><div class="slot ovf">□</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="d" style="margin-top:10px;">
+      用<b class="hl">指针约定</b>串成一条可用链（省掉额外的元数据）：
+      预分配桶的 <code>overflow</code> 指针为 nil 表示"后面还有"，靠<b>指针后移</b>取下一个；
+      <b>最后一个</b>的 overflow 指针指向 <code>buckets</code>（非 nil 哨兵）表示"用完了"。
+    </div>
+  </div>
+
+  <div class="card" style="margin-top:16px;border-color:var(--amber);">
+    <div class="t">② 用的时候：<code>newoverflow()</code>（runtime/map.go:239）</div>
+    <div class="row g16" style="margin-top:4px;align-items:flex-start;">
+      <div class="d" style="flex:1;">
+        <b class="hl">优先取预分配链上的</b>：<br>
+        · <code>nextOverflow != nil</code> → 取它，指针后移一位<br>
+        · 取到的恰是最后一个（overflow 是哨兵）→ 清成 nil，<code>nextOverflow = nil</code><br>
+        <b class="hl">预分配的用完了</b> → 才 <code>newobject(t.Bucket)</code> 真分配
+      </div>
+      <div class="d" style="flex:1;border-left:2px dashed var(--line);padding-left:16px;">
+        <code>h.incrnoverflow()</code> 计数 +1（用于等量扩容判定）<br>
+        <b class="hl">无指针的 map</b>（key/elem 都不含指针）要额外把溢出桶记到
+        <code>h.extra.overflow</code>——因为 GC 只走指针字段，桶链在 GC 眼里是断的，
+        得靠这个显式切片保住它们的存活（<code>map.go:126</code> 的注释）
+      </div>
+    </div>
+  </div>
+
+</div></body></html>

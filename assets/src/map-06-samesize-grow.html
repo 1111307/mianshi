@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="zh-CN"><head><meta charset="utf-8"><meta name="win" content="1000x640"><link rel="stylesheet" href="diagram.css">
+<style>.canvas{height:640px;padding:24px 28px;}
+.slot.on2{background:var(--indigo-bg);border-color:var(--indigo);color:var(--indigo-d);font-weight:700;}
+.slot.hole{border-style:dashed;}
+</style></head>
+<body><div class="canvas">
+
+  <h1><span class="n">2</span>等量扩容怎么把碎片挤紧</h1>
+  <p class="sub">整条溢出链的元素全部往<b>同一个目标桶</b>顺序重填——本质是一次 compact，不按老桶分组搬</p>
+
+  <div class="row g16" style="margin-top:16px;align-items:stretch;">
+
+    <div class="state" style="flex:1;">
+      <div class="sh">之前：6 个元素散在 3 个桶里（19 个空槽）</div>
+
+      <div class="col g8">
+        <div class="brow">
+          <span class="blab">主桶</span>
+          <div class="slot on2">k1</div><div class="slot hole"></div><div class="slot on2">k2</div>
+          <div class="slot hole"></div><div class="slot hole"></div><div class="slot hole"></div>
+          <div class="slot hole"></div><div class="slot hole"></div>
+        </div>
+        <div class="row g6" style="margin-left:86px;"><span class="ar down" style="font-size:14px;">↓</span><span class="small muted">overflow</span></div>
+        <div class="brow">
+          <span class="blab amber">溢出桶 1</span>
+          <div class="slot on2">k3</div><div class="slot hole"></div><div class="slot hole"></div>
+          <div class="slot on2">k4</div><div class="slot hole"></div><div class="slot hole"></div>
+          <div class="slot hole"></div><div class="slot hole"></div>
+        </div>
+        <div class="row g6" style="margin-left:86px;"><span class="ar down" style="font-size:14px;">↓</span><span class="small muted">overflow</span></div>
+        <div class="brow">
+          <span class="blab amber">溢出桶 2</span>
+          <div class="slot on2">k5</div><div class="slot hole"></div><div class="slot hole"></div>
+          <div class="slot hole"></div><div class="slot hole"></div><div class="slot hole"></div>
+          <div class="slot hole"></div><div class="slot on2">k6</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="col center" style="width:76px;padding-top:80px;">
+      <span class="ar" style="font-size:26px;">⟹</span>
+      <span class="small muted" style="text-align:center;">sameSizeGrow<br>搬迁</span>
+    </div>
+
+    <div class="state" style="flex:1;border-color:var(--indigo);background:var(--indigo-bg);">
+      <div class="sh">之后：挤进主桶，溢出链消失</div>
+
+      <div class="col g8">
+        <div class="brow">
+          <span class="blab">主桶</span>
+          <div class="slot on2">k1</div><div class="slot on2">k2</div><div class="slot on2">k3</div>
+          <div class="slot on2">k4</div><div class="slot on2">k5</div><div class="slot on2">k6</div>
+          <div class="slot hole"></div><div class="slot hole"></div>
+        </div>
+        <div class="d" style="margin-top:8px;">
+          目标桶从 <code>dst.i = 0</code> <b class="hl">顺序重填</b>；只有填满 8 个才
+          <code>newoverflow</code> 挂新桶。<br>
+          老链上的空洞自然被填掉，<b class="hl">溢出链长度直接归零</b>。
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <div class="row g16" style="margin-top:18px;align-items:stretch;">
+    <div class="card hi" style="flex:1;">
+      <div class="t">为什么这样能修碎片</div>
+      <div class="d">
+        老桶的分组是"<b>历史上怎么插就怎么放</b>"——删删插插后留下的空洞没人回收，
+        元素就散在多个桶里。<br>
+        等量扩容<b class="hl">不看老桶的分组</b>，把整条链的元素收集起来按顺序紧凑重排，
+        等价于对索引做了一次 defragment。
+      </div>
+    </div>
+
+    <div class="card" style="flex:1;border-color:var(--amber);">
+      <div class="t">顺带两个源码细节</div>
+      <div class="d">
+        · 等量扩容时<b class="hl">不计算 y 目标桶</b>——<code>y.b</code> 会越界，
+        注释写着 "Otherwise GC can see bad pointers"<br>
+        · 搬迁时新挂的溢出桶<b class="hl">不复用旧桶</b>（源码里还是 TODO：
+        "reuse overflow buckets instead of using new ones"），
+        旧桶数组连同它末尾的预分配区整体释放
+      </div>
+    </div>
+  </div>
+
+</div></body></html>
